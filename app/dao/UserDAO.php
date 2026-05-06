@@ -1,74 +1,122 @@
 <?php
 
-require_once __DIR__ . '/../config/DataBase.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../config/DataBase.php';
 
-class UserDAO
-{
-    private $conn;
+class UserDAO {
+  private $conn;
 
-    public function __construct()
-    {
-        // Conectar á base de dados
-        $this->conn = (new DataBase())->connect();
+  public function __construct() {
+    // Conectar à base de dados
+    $this->conn = (new DataBase())->connect();
+  }
+
+  private function mapRowToUser(array $row) {
+    $user = new User(
+      $row['id'],
+      $row['username'],
+      $row['email'],
+      $row['password'],
+      $row['is_admin'],
+      $row['created_at'],
+      $row['updated_at'],
+      $row['deleted_at'],
+      $row['is_verified'],
+      $row['verified_at']
+    );
+
+    return $user;
+  }
+
+  public function findByEmail($email) {
+    // Implementação para encontrar usuário pelo email
+    $sql = "
+      SELECT * 
+      FROM users 
+      WHERE email = :email 
+      AND is_verified = 1
+      AND verified_at IS NOT NULL
+      LIMIT 1
+    ";
+    // Preparar e executar a query usando PDO
+    $stmt = $this->conn->prepare($sql);
+
+    $stmt->bindParam(':email', $email);
+
+    $stmt->execute();
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    //var_dump($row);
+
+    if($row) {
+      return $this->mapRowToUser($row);
+    } else {
+      return null;
     }
 
-    public function findByEmail($email)
-    {
-        // Lógica para encontrar um utilizador pelo email
-        $sql = "SELECT * FROM users WHERE email = :email LIMIT 1";
-        // Preparar e executar a query usando PDO
-        $stmt = $this->conn->prepare($sql);
+  }
 
-        $stmt->bindParam(':email', $email);
+  public function findById($id)
+  {
+    $sql = '
+      SELECT * 
+      FROM users 
+      WHERE id = :id
+      LIMIT 1';
 
-        $stmt->execute();
+    $stmt = $this->conn->prepare($sql);
 
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->bindParam(':id', $id);
 
-        var_dump($row);
+    $stmt->execute();
 
-        if ($row) {
-            $user = new User(
-                $row['id'],
-                $row['username'],
-                $row['email'],
-                $row['created_at'],
-                $row['updated_at'],
-                $row['deleted_at']
-            );
-            var_dump($user);
-            return $row; // Retorna os dados do utilizador
-        } else {
-            return null; // Utilizador não encontrado
-        }
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    //var_dump($row);
+    if ($row) {
+      return $this->mapRowToUser($row);
+    } else {
+      return null;
     }
+  }
 
-    public function createPending($username, $email)
-    {
-        $sql = "
-    INSERT INTO users (username, email, password, is_admin, is_verified, verified_at, created_at, updated_at, deleted_at)
-    VALUES (?, ?, '', 0, 0, NULL, NOW(), NOW(), NULL)
+
+  public function createPending($username, $email) {
+    $sql = "
+      INSERT INTO users 
+      (
+        username, 
+        email, 
+        password, 
+        is_admin, 
+        is_verified, 
+        verified_at, 
+        created_at, 
+        updated_at, 
+        deleted_at)
+      VALUES (?, ?, '', 0, 0, NULL, NOW(), NOW(), NULL)
     ";
 
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute([$username, $email]);
+    $stmt = $this->conn->prepare($sql);
 
-        return (int) $this->conn->lastInsertId();
-    }
+    $stmt->execute([$username, $email]);
 
-    public function setPasswordAndVerify($userId, $passwordHash)
-    {
-        $sql = "
-        UPDATE users
-        SET password = ?,
-        is_verified = 1,
-        verified_at = NOW(),
-        updated_at = NOW()
-        WHERE id = ?
+    return (int)$this->conn->lastInsertId();
+  }
+
+  public function setPasswordAndVerify($userId, $passwordHash) {
+    $sql = "
+      UPDATE users
+      SET password = ?,
+          is_verified = 1,
+          verified_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ?
     ";
 
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute([$passwordHash, $userId]);
-    }
+    $stmt = $this->conn->prepare($sql);
+    $stmt->execute([$passwordHash, $userId]);
+
+  }
 }

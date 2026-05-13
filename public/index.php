@@ -12,7 +12,7 @@ require "../app/middleware/AuthMiddlewareWeb.php";
 
 
 
-var_dump($_SESSION['token']);
+//var_dump($_SESSION['token']);
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
@@ -153,7 +153,8 @@ elseif($uri === '/send-email/test' && $method === 'GET') {
 }
 
 elseif($uri === '/users' && $method === 'GET') {
-  var_dump('users');
+  //var_dump('users');
+  (new UserController())->listAll();
 }
 
 elseif(preg_match('#^/users/(\d+)$#', $uri, $m) && $method === 'GET'){
@@ -165,6 +166,58 @@ elseif(preg_match('#^/users/(\d+)$#', $uri, $m) && $method === 'GET'){
   (new UserController())->user($m[1]);
 
 }
+
+elseif (preg_match('#^/users/(\d+)$#', $uri, $m) && $method === 'POST') {
+  echo '<br/>';
+  var_dump($uri);
+  var_dump($m[1]);
+  var_dump('PRofile do user');
+  var_dump($_POST);
+  try {
+    (new UserController())->userUpdate($m[1]);
+
+    $_SESSION['toast'] = [
+      'type' => 'success',
+      'message' => 'Atualização realizada com muito sucesso!!!'
+    ];
+
+    header("Location: /users/$m[1]");
+
+
+  } catch(Exception $e) {
+    $_SESSION['toast'] = [
+      'type' => 'error',
+      'message' => $e->getMessage()
+    ];
+
+    header("Location: /users/$m[1]");
+  }
+} elseif (preg_match('#^/users/(\d+)/delete$#', $uri, $m) && $method === 'GET') {
+  echo '<br/>';
+  var_dump($uri);
+  var_dump($m[1]);
+  var_dump('Delete do user');
+
+  try {
+    (new UserController())->userDelete($m[1]);
+
+    $_SESSION['toast'] = [
+      'type' => 'success',
+      'message' => 'Atualização realizada com muito sucesso!!!'
+    ];
+
+    header("Location: /users");
+  } catch (Exception $e) {
+    $_SESSION['toast'] = [
+      'type' => 'error',
+      'message' => $e->getMessage()
+    ];
+
+    header("Location: /users/$m[1]");
+  }
+}
+
+
 
 
 

@@ -15,12 +15,15 @@
       <?php if ($user->isAdmin()): ?>
 
         <div class="alert alert-primary" role="alert">
-          É Administrador
+          É Administrador <i class="fa-solid fa-circle-user"></i>
         </div>
 
       <?php else: ?>
-        <div class="alert alert-secondary" role="alert">
-          Não É Admin
+        <div 
+          class="alert alert-secondary" 
+          style="display: flex;align-items: baseline; justify-content: space-between;" 
+          role="alert">
+          <i class="fa-solid fa-user"></i> <span>Não É Admin</span>
         </div>
       <?php endif; ?>
 
@@ -28,14 +31,14 @@
         <div class="card-body">
           <h4 class="mb-3">Profile</h4>
 
-          <form method="POST" action="/signup">
-            <input name="username" value="<?= $user->getUsername() ?>" class="form-control mb-2" placeholder="Username" required <?php if(! AuthMiddlewareWeb::canEdit($user->getId())): ?> disabled <?php endif ?> >
+          <form method="POST" action="/users/<?= $user->getId() ?>">
+            <input name="username" value="<?= $user->getUsername() ?>" class="form-control mb-2" placeholder="Username" required <?php if (! AuthMiddlewareWeb::canEdit($user->getId())): ?> disabled <?php endif ?>>
             <input name="email" value="<?= $user->getEmail() ?>" type="email" class="form-control mb-2" placeholder="Email" required>
             <input id="is_admin" name="is_admin" type="checkbox" class="form-check-input" <?= $user->isAdmin() ? 'checked' : '' ?>>
             <label for="is_admin">Admin</label>
 
-            <?php if(AuthMiddlewareWeb::canEdit($user->getId())): ?>
-            <button class="btn btn-primary w-100">Guardar</button>
+            <?php if (AuthMiddlewareWeb::canEdit($user->getId())): ?>
+              <button class="btn btn-primary w-100">Guardar</button>
             <?php endif; ?>
           </form>
         </div>

@@ -119,4 +119,57 @@ class UserDAO {
     $stmt->execute([$passwordHash, $userId]);
 
   }
+
+  public function getAll() {
+    $sql = "
+      SELECT * 
+      FROM users 
+    ";
+
+    $stmt = $this->conn->prepare($sql);
+
+    $stmt->execute();
+
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $users = [];
+
+    foreach($rows as $row) {
+      $user = $this->mapRowToUser($row);
+      $users[] = $user;
+    }
+
+    var_dump($users[0]->getId());
+
+  }
+
+  public function userUpdateDAO($userId, $username, $email, $isAdmin) {
+    $sql = "
+      UPDATE `users` 
+      SET 
+        username = ?, 
+        email= ?, 
+        is_admin = ? 
+      WHERE id = ?
+    ";
+
+    $stmt = $this->conn->prepare($sql);
+    $stmt->execute([$username, $email, $isAdmin, $userId]);
+
+    $result = $stmt->rowCount();
+
+    return $result;
+
+  }
+
+  public function userDeleteDAO($userId) {
+    $sql = "DELETE FROM users WHERE id = ?";
+
+    $stmt = $this->conn->prepare($sql);
+    $stmt->execute([$userId]);
+
+    $result = $stmt->rowCount();
+
+    return $result;
+  }
 }

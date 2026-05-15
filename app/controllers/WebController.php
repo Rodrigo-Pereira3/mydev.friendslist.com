@@ -2,7 +2,7 @@
 
 class WebController {
 
-  private function view($name) {
+  private function view($name, $data = []) {
     require __DIR__ . '/../../public/views/' . $name . '.php';
   }
 
@@ -22,8 +22,11 @@ class WebController {
     $this->view('signup');
   }
 
-  // Errors Pages
+  
+
+
   public function badRequest() {
     $this->view('errors/400');
+
   }
 }

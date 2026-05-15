@@ -17,7 +17,6 @@
             <a class="text-decoration-none" href="/signup">Não tem uma conta? Registre-se aqui.</a>
           </div>
 
-
         </div>
       </div>
     </div>

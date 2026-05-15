@@ -1,15 +1,10 @@
 <?php include __DIR__ . "/../includes/header.php"; ?>
-
-<?PHP if (isset($_SESSION['error'])): ?>
+<?php if(isset($_SESSION['flash_error'])): ?>
   <div class="alert alert-danger">
-    <?= $_SESSION['error']; ?>
+    <?php echo $_SESSION['flash_error']; ?>
   </div>
-
-  <?php unset($_SESSION['error']); ?>
-<?PHP endif; ?>
-
-
-
+  <?php unset($_SESSION['flash_error']); ?>
+<?php endif; ?>
 
 <div class="container py-5">
   <div class="row justify-content-center">
@@ -19,9 +14,9 @@
           <h4 class="mb-3">Sign up</h4>
 
           <form method="POST" action="/signup">
-            <input name="username" value="Albertina" class="form-control mb-2" placeholder="Username" required>
-            <input name="email" value="albertina.meirelles@gmail.com" type=" email" class="form-control mb-2" placeholder="Email" required>
-            <input name="password" value="123456" type="password" class="form-control mb-3" placeholder="Password" required>
+            <input name="username" value="Albertina Meireles" class="form-control mb-2" placeholder="Username" required>
+            <input name="email" value="albertina.meireles@doces.com" type="email" class="form-control mb-2" placeholder="Email" required>
+            <input name="password" value="password123" type="password" class="form-control mb-3" placeholder="Password" required>
 
             <button class="btn btn-primary w-100">Criar conta</button>
           </form>
@@ -34,6 +29,4 @@
     </div>
   </div>
 </div>
-
-
 <?php include __DIR__ . "/../includes/footer.php"; ?>

@@ -11,209 +11,170 @@ require "../app/services/Mailer.php";
 require "../app/middleware/AuthMiddlewareWeb.php";
 
 
-
-//var_dump($_SESSION['token']);
-
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 //$uri = str_replace("mydevpiratas.com/public", "", $uri);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-if($uri === '/' || $uri === '/index' || $uri === '/home') {
-  (new WebController())->index();
+if(isset($_SESSION['token'])){
+  var_dump("Existe sessão iniciada");
+  //var_dump($_SESSION['token']);
+
+  var_dump($_SESSION['token']['id']);
+
+  var_dump($_SESSION);
+
+  echo('<br><br><br><br><br>');
+
+} else {
+  var_dump("Não existe sessão iniciada");
 }
 
-elseif($uri === '/pagina-privada' && $method === 'GET') {
+
+if($uri === '/' || $uri === '/index' || $uri === '/home') {
+  
+  (new WebController())->index();
+
+} 
+
+elseif($uri === '/pagina-privada' && $method === "GET") {
+  //(new WebController())->paginaPrivada();
   $isLogin = AuthMiddlewareWeb::isLogin();
-
-  if(! $isLogin) {
-    $_SESSION['toast'] = [
-      'type' => 'error',
-      'message' => 'Página protegida!!!'
-    ];
-
-
+  // Se utilizador não estiver logado, redirecionar para a página de login
+  if(!$isLogin) {
     header("Location: /login");
     exit;
+  } else {
+    die("Bem-vindo à página privada!");
+    //(new WebController())->paginaPrivada();
   }
+} 
 
-  var_dump("Podes continuar");
-} elseif ($uri === '/pagina-privada-admin' && $method === 'GET') {
-  $isAdmin = AuthMiddlewareWeb::isAdmin();
-  var_dump($_SESSION['token']);
-  var_dump($isAdmin);
-  if (! $isAdmin) {
-    header("Location: /");
+elseif ($uri === '/pagina-privada-admin' && $method === "GET") {
+  //(new WebController())->paginaPrivada();
+  $isLogin = AuthMiddlewareWeb::isAdmin();
+  // Se utilizador não estiver logado, redirecionar para a página de login
+  
+  if (!$isLogin) {
+    die("Acesso negado. Apenas para admins.");
+    header("Location: /login");
     exit;
+  } else {
+    die("Bem-vindo à página privada admin!");
+    //(new WebController())->paginaPrivada();
   }
-
-  var_dump("Podes continuar porque é admin");
 }
 
 
-
-
-
-
-
-
-elseif($uri === '/login' && $method === 'GET') {
+elseif ($uri === '/login' && $method === "GET") {
   $isLogin = AuthMiddlewareWeb::isLogin();
-  // Se estiver logado não deico entrar no login
+  // Se utilizador não estiver logado, redirecionar para a página de login
   if ($isLogin) {
     header("Location: /");
     exit;
+  } else {
+    (new WebController())->login();
   }
 
-
-  (new WebController())->login();
-}
-
-elseif ($uri === '/login' && $method === 'POST') {
-  //var_dump($email);
-  //var_dump($password);
-
-  //var_dump($_POST);
-
-  //var_dump("Estou no login a validar os dados");
+} elseif ($uri === '/login' && $method === "POST") {
   (new AuthController())->loginWeb();
-}
-
-elseif($uri === '/logout' && $method === 'GET') {
-  unset($_SESSION['token']);
-
-  $_SESSION['toast'] = [
-    'type' => 'success',
-    'message' => 'Logout efetuado com sucesso!!!'
-  ];
 
 
-  header("Location: /login");
-  exit;  
+} elseif ($uri === '/logout' && $method === "GET") {
 
-}
-
-
-
-elseif($uri === '/signup' && $method === 'GET') {
-  $isLogin = AuthMiddlewareWeb::isLogin();
-  // Se estiver logado não deico entrar no login
-  if ($isLogin) {
-    header("Location: /");
+  if(AuthMiddlewareWeb::isLogin()) {
+    (new AuthController())->logoutWeb();
     exit;
+  } else {
+    header("Location: /");
   }
 
+}
 
+
+elseif ($uri === '/signup' && $method === "GET") {
+  //var_dump("Entrar na página sigup");
   (new WebController())->signup();
 }
 
-elseif ($uri === '/signup' && $method === 'POST') {
+
+elseif ($uri === '/signup' && $method === "POST") {
+  //var_dump("Entrar na página signup post para submeter");
   try {
     (new AuthController())->signupWeb();
-  } catch (Exception $e) {
-    var_dump($e->getMessage());
-    $_SESSION['error'] = $e->getMessage();
-    // Redirecionar de volta para a página de signup
+
+  } catch(Exception $e) {
+
+    var_dump($e);
+    var_dump("Erro: " . $e->getMessage());
+    $_SESSION['flash_error'] = $e->getMessage();
     header("Location: /signup");
-    exit();
-  }
-}
-
-elseif($uri === '/verify-email' && $method === 'GET') {
+  }  
   
-
-  (new AuthController())->verifyEmailForm();
-
 }
 
-elseif ($uri === '/verify-email' && $method === 'POST') {
-  try{
+elseif($uri === '/verify-email' && $method === "GET") {
+  //var_dump("Entrar na página de verificação de email");
+  (new AuthController())->verifyEmailForm();
+}
+
+elseif ($uri === '/verify-email' && $method === "POST") {
+  try {
     (new AuthController())->verifyEmailSubmit();
-  } catch (Exception $e) {
-    var_dump($e->getMessage());
-    $_SESSION['error'] = $e->getMessage();
-    // Redirecionar de volta para a página de signup
-    header("Location: /verify-email?token=" . urlencode($_POST['token']));
-    exit();
+
+  } catch(Exception $e) {
+
+    var_dump($e);
+    var_dump("Erro: " . $e->getMessage());
+    $_SESSION['flash_error'] = $e->getMessage();
+    header("Location: /login");
+    exit;
   }
 }
 
-elseif($uri === '/send-email/test' && $method === 'GET') {
-  var_dump('/send-email/test');
 
-  $html = file_get_contents(__DIR__ . "/views/emails/welcome.php");
-
-  (new Mailer())->send(
-    "jose.goncalves@esjaloures.org",
-    "Test Email MyDevPiratas",
-    $html
-  );
-
-}
-
-elseif($uri === '/users' && $method === 'GET') {
-  //var_dump('users');
-  (new UserController())->listAll();
-}
-
-elseif(preg_match('#^/users/(\d+)$#', $uri, $m) && $method === 'GET'){
-  echo '<br/>';
-  var_dump($uri);
-  var_dump($m[1]);
-  var_dump('PRofile do user');
-
-  (new UserController())->user($m[1]);
-
-}
-
-elseif (preg_match('#^/users/(\d+)$#', $uri, $m) && $method === 'POST') {
-  echo '<br/>';
-  var_dump($uri);
-  var_dump($m[1]);
-  var_dump('PRofile do user');
-  var_dump($_POST);
+elseif($uri === '/users' && $method === 'GET'){
   try {
-    (new UserController())->userUpdate($m[1]);
-
+    (new UserController())->getUsers();
+    
+  } catch (Exception $e) {
     $_SESSION['toast'] = [
-      'type' => 'success',
-      'message' => 'Atualização realizada com muito sucesso!!!'
+      'type' => 'error',
+      'message' => $e->getMessage(),
     ];
 
-    header("Location: /users/$m[1]");
+    header("Location: /users");
+  }
+}
 
+
+elseif(preg_match('#^/users/(\d+)$#', $uri, $m) && $method === "GET") {
+  // o id do user que queremo ver
+  $userId = $m[1];
+
+  (new UserController())->profile($userId);
+
+} elseif (preg_match('#^/users/(\d+)/update$#', $uri, $m) && $method === "POST") {
+  
+  try{
+    // o id do user que queremo ver
+    $userId = $m[1];
+    (new UserController())->update($userId);
+    $_SESSION['toast'] = [
+      'type' => 'success',
+      'message' => 'Dados atualizados com sucesso!',
+    ];
+
+    header("Location: /users/$userId");
 
   } catch(Exception $e) {
     $_SESSION['toast'] = [
       'type' => 'error',
-      'message' => $e->getMessage()
+      'message' => $e->getMessage(),
     ];
 
-    header("Location: /users/$m[1]");
-  }
-} elseif (preg_match('#^/users/(\d+)/delete$#', $uri, $m) && $method === 'GET') {
-  echo '<br/>';
-  var_dump($uri);
-  var_dump($m[1]);
-  var_dump('Delete do user');
-
-  try {
-    (new UserController())->userDelete($m[1]);
-
-    $_SESSION['toast'] = [
-      'type' => 'success',
-      'message' => 'Atualização realizada com muito sucesso!!!'
-    ];
-
-    header("Location: /users");
-  } catch (Exception $e) {
-    $_SESSION['toast'] = [
-      'type' => 'error',
-      'message' => $e->getMessage()
-    ];
-
-    header("Location: /users/$m[1]");
+    header("Location: /users/$userId");
   }
 }
 
@@ -221,16 +182,24 @@ elseif (preg_match('#^/users/(\d+)$#', $uri, $m) && $method === 'POST') {
 
 
 
-//Errors Pages
-elseif($uri === '/bad-request') {
+// Rotas das páginas de erro
+elseif($uri === '/bad-request' && $method === "GET") {
   (new WebController())->badRequest();
 }
 
-
 else {
-  http_response_code(404);
-  echo "Page not found";
+  echo "404";
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

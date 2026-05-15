@@ -1,47 +1,29 @@
 <?php
 
 class AuthMiddlewareWeb {
-  
-  // Verifica se um user está logado
-  // Com session token
+
   public static function isLogin() {
     if (isset($_SESSION['token'])) {
-      // Se tiver logado true
       return true;
     } else {
-      // Se não tiver logado false
-      return false;
-      
+      return false;  
     }
   }
 
-  public static function isAdmin()
-  {
-    if (isset($_SESSION['token']) && $_SESSION['token']['is_admin']) {
-      // Se tiver logado true
+  public static function isAdmin() {
+    if (isset($_SESSION['token']) && $_SESSION['token']['is_admin'] == 1) {
       return true;
     } else {
-      // Se não tiver logado false
-      return false;
+      return false;  
     }
   }
 
-  public static function canEdit($profileUserId) 
-  {
-    var_dump($profileUserId);
-    // $profileUserId é o profile do user que estou a ver
-    $userLogadoId = $_SESSION['token']['id'];
-    $userLogadoIsAdmin =  $_SESSION['token']['is_admin'];
-
-    if($userLogadoIsAdmin) {
-      return true;
-    }
-
-    if ($userLogadoId == $profileUserId) {
+  public static function canEdit($userId) {
+    if(isset($_SESSION['token']) && ($_SESSION['token']['is_admin'] == 1 || $_SESSION['token']['id'] == $userId)) {
       return true;
     }
 
     return false;
-
   }
+
 }

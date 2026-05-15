@@ -11,21 +11,63 @@ class UserDAO {
     $this->conn = (new DataBase())->connect();
   }
 
-  private function mapRowToUser(array $row) {
-    $user = new User(
-      $row['id'],
-      $row['username'],
-      $row['email'],
-      $row['password'],
-      $row['is_admin'],
-      $row['created_at'],
-      $row['updated_at'],
-      $row['deleted_at'],
-      $row['is_verified'],
-      $row['verified_at']
-    );
+  public function findById($userId) {
+    $sql = "
+      SELECT * 
+      FROM users 
+      WHERE id = :id
+      AND is_verified = 1 
+      AND verified_at IS NOT NULL 
+      LIMIT 1
+    ";
 
-    return $user;
+    $stmt = $this->conn->prepare($sql);
+
+    $stmt->bindParam(':id', $userId);
+
+    $stmt->execute();
+    // resultado da base de dados
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    //var_dump($row);
+    //var_dump($row);
+
+    if ($row) {
+      $user = new User(
+        $row['id'],
+        $row['username'],
+        $row['email'],
+        $row['password'],
+        $row['is_admin'],
+
+      );
+
+
+      //var_dump($user);
+      return $user;
+    } else {
+      return FALSE;
+    }
+  }
+
+  public function updateUser($userId, $username, $email) {
+    //var_dump($userId);
+  
+    $sql = "
+      UPDATE users
+      SET username = ?, email = ?
+      WHERE id = ?
+    ";
+
+    $stmt = $this->conn->prepare($sql);
+    $stmt->execute([
+      $username,
+      $email,
+      $userId
+    ]);
+
+    $result = $stmt->rowCount();
+    var_dump($result);
+    return $result;
   }
 
   public function findByEmail($email) {
@@ -34,8 +76,8 @@ class UserDAO {
       SELECT * 
       FROM users 
       WHERE email = :email 
-      AND is_verified = 1
-      AND verified_at IS NOT NULL
+      AND is_verified = 1 
+      AND verified_at IS NOT NULL 
       LIMIT 1
     ";
     // Preparar e executar a query usando PDO
@@ -44,68 +86,44 @@ class UserDAO {
     $stmt->bindParam(':email', $email);
 
     $stmt->execute();
-
+    // resultado da base de dados
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    //var_dump($row);
     //var_dump($row);
 
     if($row) {
-      return $this->mapRowToUser($row);
+      $user = new User(
+        $row['id'],
+        $row['username'],
+        $row['email'],
+        $row['password'],
+        $row['is_admin'],
+
+      );
+
+
+      //var_dump($user);
+      return $user;
     } else {
-      return null;
+      return FALSE;
     }
 
   }
-
-  public function findById($id)
-  {
-    $sql = '
-      SELECT * 
-      FROM users 
-      WHERE id = :id
-      LIMIT 1';
-
-    $stmt = $this->conn->prepare($sql);
-
-    $stmt->bindParam(':id', $id);
-
-    $stmt->execute();
-
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    //var_dump($row);
-    if ($row) {
-      return $this->mapRowToUser($row);
-    } else {
-      return null;
-    }
-  }
-
 
   public function createPending($username, $email) {
     $sql = "
-      INSERT INTO users 
-      (
-        username, 
-        email, 
-        password, 
-        is_admin, 
-        is_verified, 
-        verified_at, 
-        created_at, 
-        updated_at, 
-        deleted_at)
-      VALUES (?, ?, '', 0, 0, NULL, NOW(), NOW(), NULL)
-    ";
+    INSERT INTO users (username, email, password, is_admin, is_verified, verified_at, created_at, updated_at, deleted_at)
+    VALUES (?, ?, '', 0, 0, NULL, NOW(), NOW(), NULL)
+  ";
 
     $stmt = $this->conn->prepare($sql);
-
     $stmt->execute([$username, $email]);
 
     return (int)$this->conn->lastInsertId();
   }
 
-  public function setPasswordAndVerify($userId, $passwordHash) {
+  public function setPasswordAndVerify(int $userId, string $passwordHash): void
+  {
     $sql = "
       UPDATE users
       SET password = ?,
@@ -117,13 +135,11 @@ class UserDAO {
 
     $stmt = $this->conn->prepare($sql);
     $stmt->execute([$passwordHash, $userId]);
-
   }
 
-  public function getAll() {
+  public function getUsersDAO() {
     $sql = "
-      SELECT * 
-      FROM users 
+      SELECT * FROM users;
     ";
 
     $stmt = $this->conn->prepare($sql);
@@ -133,43 +149,54 @@ class UserDAO {
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $users = [];
-
+    //var_dump($rows);
     foreach($rows as $row) {
-      $user = $this->mapRowToUser($row);
+      
+      // Criar um objeto do tipo user
+      $user = new User(
+        $row['id'],
+        $row['username'],
+        $row['email'],
+        $row['password'],
+        $row['is_admin'],
+      );
+
+      // Adicionar o user criado ao array
       $users[] = $user;
     }
-
-    var_dump($users[0]->getId());
-
+    
+    return $users;
   }
 
-  public function userUpdateDAO($userId, $username, $email, $isAdmin) {
+  public function getNumUsersDAO() {
     $sql = "
-      UPDATE `users` 
-      SET 
-        username = ?, 
-        email= ?, 
-        is_admin = ? 
-      WHERE id = ?
+      SELECT COUNT(*) FROM users;
     ";
 
     $stmt = $this->conn->prepare($sql);
-    $stmt->execute([$username, $email, $isAdmin, $userId]);
 
-    $result = $stmt->rowCount();
+    $stmt->execute();
 
-    return $result;
+    $numUsers = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    var_dump($numUsers);
+
+    return $numUsers;
   }
 
-  public function userDeleteDAO($userId) {
-    $sql = "DELETE FROM users WHERE id = ?";
+  public function arrayUsersDAO()
+  {
+    $sql = "
+      SELECT * FROM users;
+    ";
 
     $stmt = $this->conn->prepare($sql);
-    $stmt->execute([$userId]);
 
-    $result = $stmt->rowCount();
+    $stmt->execute();
 
-    return $result;
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return $rows;
   }
+
 }

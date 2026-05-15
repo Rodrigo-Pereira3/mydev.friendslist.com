@@ -17,10 +17,6 @@ class User {
   private ?string $updatedAt;
 
   private ?string $deletedAt;
-
-  private bool $isVerified;
-
-  private ?string $verifiedAt;
  
   public function __construct(
 
@@ -38,9 +34,8 @@ class User {
 
     ?string $updatedAt = null,
 
-    ?string $deletedAt = null,
-    bool $isVerified = false,
-    ?string $verifiedAt = null
+    ?string $deletedAt = null
+
   ) {
 
     $this->id = $id;
@@ -58,10 +53,6 @@ class User {
     $this->updatedAt = $updatedAt;
 
     $this->deletedAt = $deletedAt;
-
-    $this->isVerified = $isVerified;
-
-    $this->verifiedAt = $verifiedAt;
 
   }
  
@@ -186,23 +177,10 @@ class User {
   }
 
   public function setDeletedAt(?string $deletedAt): void
+
   {
 
     $this->deletedAt = $deletedAt;
-
-  }
-
-  public function isVerified(): bool
-  {
-
-    return $this->isVerified;
-
-  }
-
-  public function getVerifiedAt(): ?string
-  {
-
-    return $this->verifiedAt;
 
   }
 

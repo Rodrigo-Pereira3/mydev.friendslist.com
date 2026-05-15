@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/../dao/UserDAO.php';
-require_once __DIR__ . '/../dao/EmailVerificationDao.php';
+require_once __DIR__ . '/../dao/EmailVerificationDAO.php';
+require_once __DIR__ . '/../config/JwtConfig.php';
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
 class AuthController
 {
 
@@ -19,87 +24,99 @@ class AuthController
     $password = trim($_POST['password']) ?? '';
     
     // Se não houver email ou password, mostrar erro
+    // é preciso lançar exceção para o index.php apanhar e mostrar o erro via flash message
     if(empty($email) || empty($password)) {
       die("Email e password são obrigatórios");
     }
 
     $user = (new UserDAO())->findByEmail($email);
-    
+
     if(!$user) {
       die("Email ou password inválidos");
     }
-    // Serve para criar a session token
-    // que valida se o user está ou não logado
-    $_SESSION['token'] = [
-      'id' => $user->getId(),
-      'username' => $user->getUsername(),
-      'email' => $user->getEmail(),
-      'is_admin' => $user->isAdmin(),
-      'is_verified' => $user->isVerified(),
-      'verified_at' => $user->getVerifiedAt(),
-      'created_at' => $user->getCreatedAt(),
-      'updated_at' => $user->getUpdatedAt(),
-      'deleted_at' => $user->getDeletedAt()
-    ];
+    // Utilizador foi encontrado - verificar password
+    if(password_verify($password, $user->getPassword())) {
+      var_dump("Password correta");
+      $_SESSION['token'] = [
+        'id' => $user->getId(),
+        'username' => $user->getUsername(),
+        'email' => $user->getEmail(),
+        'is_admin' => $user->isAdmin()
+      ];
+      // Password correta - criar sessão
+      //$_SESSION['user_id'] = $user->id;
+      //$_SESSION['username'] = $user->username;
 
-    $_SESSION['toast'] = [
-      'type' => 'success',
-      'message' => 'Login Efetuado com sucesso'
-    ];
+      // Redirecionar para a home
+      $_SESSION['toast'] = [
+        'type' => 'success',
+        'message' => "Bem-vindo de volta, " . $user->getUsername() . "!"
+      ];
 
-    header("Location: /");
+       header("Location: /");
+       exit;
+      //header("Location: /");
+      exit;
+    } else {
+      $_SESSION['toast'] = [
+        'type' => 'error',
+        'message' => "Dados de login inválidos"
+      ];
+      header("Location: /login");
+      exit;
+    }    
 
   }
 
   public function signupWeb() {
     /**
-     * @TODO validar se existe utilizador logado
+     * @TODO Validar se existe user logado
      */
     $username = trim($_POST['username']) ?? '';
     $email = trim($_POST['email']) ?? '';
     $password = trim($_POST['password']) ?? '';
 
-    if($username === '' || $email === ''){
-      throw new Exception("Username, email e password são obrigatórios");
+    if($username === '' || $email === '') {
+      throw new Exception("Username e email são obrigatórios");
     }
 
     if(! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-      throw new Exception("Email inválido");
+      throw new Exception("Dados inválidos");
     }
-    // validar se o email já existe
+
+    // Verificar se email já existe
     $user = (new UserDAO())->findByEmail($email);
 
+    var_dump($user);
     if($user) {
-      throw new Exception("Email já existe na base de dados seu malandro");
+      throw new Exception("Email já existe");
     }
+    // User no estado pendente
+    $userId = (new UserDAO())->createPending($username, $email);
+    
+    // Criar token de verificação
+    $verDAO = new EmailVerificationDAO();
 
-    // Criar o utilizador no estado pendente
-    $userDao = new UserDAO();
-
-    $userId = $userDao->createPending($username, $email);
-
-    $verDao = new EmailVerificationDAO();
-
-    $token = $verDao->createForUser($userId, 300);
+    $token = $verDAO->createForUser($userId, 300);
 
     // 3) baseUrl dinâmico (vhosts)
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $baseUrl = $scheme . '://' . $host;
-
+    
     // 4) link para clicar no email
     $link = $baseUrl . "/verify-email?token=" . urlencode($token);
-
+    
     // 5) envia email via Mailer (PHPMailer/Mailtrap)
     $subject = "Verifica o teu email (expira em 5 min)";
     $html = "
         <div style='font-family: Arial, sans-serif;'>
-        <h2>Olá, " . htmlspecialchars($username) . "!</h2>
+        <h2>Olá, " . htmlspecialchars($username . $userId) . "!</h2>
         <p>Para ativares a tua conta e definires a tua password, clica no link abaixo (válido por <b>5 minutos</b>):</p>
         <p><a href='{$link}'>{$link}</a></p>
         <p>Se o link expirar, faz signup novamente (ou pede reenvio do link).</p>
         </div>
-    ";
+        ";
 
     (new Mailer())->send($email, $subject, $html);
 
@@ -107,21 +124,18 @@ class AuthController
     $_SESSION['flash_success'] = "Conta criada. Enviámos um email para verificares (link expira em 5 min).";
     header("Location: /login");
     exit;
+
   }
 
   public function verifyEmailForm() {
     $token = $_GET['token'] ?? '';
-
+    
     if(empty($token)) {
       header("Location: /bad-request");
-      exit();
     }
 
-    // TOken válido
-    $this->view('verify-email', [
-      'token' => $token,
-      'userId' => 1
-      ]);  
+    $this->view('verify-email', ['token' => $token]);
+
   }
 
   public function verifyEmailSubmit() {
@@ -129,29 +143,99 @@ class AuthController
     $password = $_POST['password'] ?? '';
 
     if(empty($token) || empty($password)) {
-      throw new Exception("Token e password são obrigatórios");
+      throw new Exception("Dados inválidos");
     }
 
-    $verDao = new EmailVerificationDAO();
+    // Verificar validade do token
+    $verDAO = new EmailVerificationDAO();
 
-    $userId = $verDao->validateToken($token);
+    $userId = $verDAO->validateToken($token);
 
-    if(! $userId) {
+    //var_dump("UserId encontrado para o token: " . $userId);
+    if(!$userId) {
       throw new Exception("Token inválido ou expirado");
     }
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
 
-    $userDAO = new UserDAO();
-    // Atualizar a password do utilizador e marcar como verificado
-    $userDAO->setPasswordAndVerify($userId, $hash);
-    // Desativar o token para não ser usado novamente
-    
-    $verDao->markUsed($token);
+    $userDao = new UserDAO();
+    $userDao->setPasswordAndVerify($userId, $hash);
 
+    $verDAO->markUsed($token);
 
     $_SESSION['flash_success'] = "Email verificado e password definida. Já podes fazer login.";
     header("Location: /login");
     exit;
+
+    
   }
+
+  public function logoutWeb() {
+    unset($_SESSION['token']);
+
+    $_SESSION['toast'] = [
+      'type' => 'success',
+      'message' => 'Sessão terminada com sucesso.'
+    ];
+
+    header("Location: /");
+  }
+
+  public function loginApi() {
+    try{
+
+      if( ! isset($_POST['email']) || ! $_POST['password']) {
+        throw new Exception("Email e password são obrigatórios");
+      }
+      
+      $email = trim($_POST['email']) ?? '';
+
+      $password = trim($_POST['password']) ?? '';
+      // Se não houver email ou password, mostrar erro
+      // é preciso lançar exceção para o index.php apanhar e mostrar o erro via flash message
+      if (empty($email) || empty($password)) {
+        throw new Exception("Email e password são obrigatórios");
+      }
+
+      $user = (new UserDAO())->findByEmail($email);
+
+      if (! $user || ! password_verify($password, $user->getPassword())) {
+        throw new Exception("Email ou password errados");
+      }
+
+      $data = [
+        'id' => $user->getId(),
+        'role' => $user->isAdmin()
+      ];
+
+      $payload = JwtConfig::getConfig($data);
+
+      $jwt = JWT::encode($payload, JwtConfig::getSignature(), "HS256");
+
+      $dataResponse = [
+        'success' => true,
+        'message' => "Login efetuado com sucesso",
+        'data'    => [
+          'jwt' => $jwt,
+          'user' => [
+            'id' => $user->getId(),
+            'role' => $user->isAdmin(),
+            'username' => $user->getUsername()
+          ]
+        ]
+      ];
+
+      Utils::jsonResponse($dataResponse, 200);
+
+    } catch(Exception $e) {
+      $dataResponse = [
+        'success' => false,
+        'message' => $e->getMessage(),
+        'data'    => []
+      ];
+
+      Utils::jsonResponse($dataResponse, 401);
+    }
+  }
+
 }

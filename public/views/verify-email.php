@@ -22,8 +22,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 
 
+      
 
-       <form method="post" action="/verify-email" class="card card-body shadow-sm">
+
+
+       <form method="POST" action="/verify-email" class="card card-body shadow-sm">
            <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
 
 

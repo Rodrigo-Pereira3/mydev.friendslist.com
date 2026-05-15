@@ -11,13 +11,14 @@
       <div class="col-md-6 text-md-end">
         <a class="text-white text-decoration-none me-3" href="/dashboard">Dashboard</a>
         <a class="text-white text-decoration-none me-3" href="/piratas">Piratas</a>
-        <?php if (! AuthMiddlewareWeb::isLogin()): ?>
 
-          <a class="text-white text-decoration-none" href="/login">Login</a>
-        <?php else: ?>
-
+        <?php if (AuthMiddlewareWeb::isLogin()): ?>
           <a class="text-white text-decoration-none" href="/logout">Logout</a>
+        <?php else: ?>
+          <a class="text-white text-decoration-none" href="/login">Login</a>
         <?php endif; ?>
+
+
       </div>
     </div>
   </div>
@@ -29,10 +30,8 @@
 
 <script>
   const toast = <?= json_encode($_SESSION["toast"] ?? null) ?>;
-
-  <?php
-  unset($_SESSION['toast']);
-  ?>
+  
+  <?php unset($_SESSION['toast']); ?>
 
   if (toast) {
 
